@@ -1,0 +1,5 @@
+$log PINC
+$startlog manchester_signal_output.stim
+#19
+PINC = 0x02
+$break
