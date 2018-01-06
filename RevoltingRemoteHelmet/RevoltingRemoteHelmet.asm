@@ -90,18 +90,25 @@ out TCCR1B,r16
 sei // enable interrupts
 main:
 
-lds r16,decoder_cntr
-cpi r16,min_pulses
-brne led_off
-in r16,PORTB
-ori r16,0x02
-out PORTB,r16
-
+lds r18,receiver_state
+sbrs r18,7
 rjmp main
-led_off:
-in r16,PORTB
-andi r16,0xff-0x02
-out PORTB,r16
+
+// message is ready, decode it
+cbr r18,128
+lds r17,receiver_message+1
+lds r16,receiver_message
+cpi r17,0b01010101
+brne main_end
+
+andi r16,0x07
+lsl r16
+in r17,PORTB
+or r17,r16
+out PORTB,r17
+
+main_end:
+sts receiver_state,r18
 
 rjmp main
 
@@ -142,51 +149,208 @@ ret
 
 inputCapture:
 push r16
+push r17
+push r18
 in r16,SREG
 push r16
-
-in r16,ICR1L
-in r17,ICR1H
-subi r16,low(pulse_duration+pulse_tolerance)
-sbci r17,high(pulse_duration+pulse_tolerance)
-brmi inputCapture_cont1
-rjmp inputCapture_error
-inputCapture_cont1:
-in r16,ICR1L
-in r17,ICR1H
-subi r16,low(pulse_duration-pulse_tolerance)
-sbci r17,high(pulse_duration-pulse_tolerance)
-brpl inputCapture_cont2
-rjmp inputCapture_error
-inputCapture_cont2:
-// pulse had the correct duration
-
-// invert edge trigger slope
-in r16,TCCR1B
-ldi r17,(1<<ICES1)
-eor r16,r17
-out TCCR1B,r16
 
 // reset counter
 ldi r16,0x00
 out TCNT1H,r16
 out TCNT1L,r16
 
-// increase the decoder counter
-lds r16,decoder_cntr
-cpi r16,min_pulses
-breq inputCapture_end
+//check the receiver state in order to know which pulse duration to expecte
+lds r16,receiver_state
+sbrc r16,7 // ignore any kind of interrupts as long as the message hasn't been consumed
+rjmp ic_end
+andi r16,0b0011111
+cpi r16,0x00 
+brne check_rs_2
+// the very first pulse has been received
 inc r16
-sts decoder_cntr,r16
-rjmp inputCapture_end
+sts receiver_state,r16
+clc
+lds r18,receiver_message + 1
+lds r17,receiver_message
+rol r17
+rol r18
+sts receiver_message + 1,r18
+sts receiver_message,r17
 
-inputCapture_error:
+rjmp ic_end
+
+check_rs_2:
+cpi r16,0x10
+brne cont_rs_2
+rjmp check_rs_3
+cont_rs_2:
+lds r16,receiver_state
+sbrc r16,6 // we received the first short pulse and are expecting a second short pulse
+rjmp check_shortpulse
+// we are receiving byte so check for 1*pulse_duration and 2*pulse_duration pulses
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(pulse_duration+pulse_tolerance)
+sbci r17,high(pulse_duration+pulse_tolerance)
+brmi inputCapture_cont1
+rjmp ic_checkdouble
+inputCapture_cont1:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(pulse_duration-pulse_tolerance)
+sbci r17,high(pulse_duration-pulse_tolerance)
+brpl ic_setshort
+rjmp ic_error // pulse was short than 1 pulse_duration --> certainly an error
+
+
+check_shortpulse:
+// we are receiving byte so check for 1*pulse_duration and 2*pulse_duration pulses
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(pulse_duration+pulse_tolerance)
+sbci r17,high(pulse_duration+pulse_tolerance)
+brmi inputCapture_cont3
+rjmp ic_error // a long pulse is an error here
+inputCapture_cont3:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(pulse_duration-pulse_tolerance)
+sbci r17,high(pulse_duration-pulse_tolerance)
+brpl ic_clearshort
+rjmp ic_error // pulse was short than 1 pulse_duration --> certainly an error
+
+
+ic_setshort:
+// we have a short pulse
+lds r16,receiver_state
+sbr r16,64
+rjmp ic_cont_short
+
+ic_clearshort:
+lds r16,receiver_state
+cbr r16,64
+inc r16
+
+ic_cont_short:
+sts receiver_state,r16
+
+lds r17,receiver_message // check last bit entered in receiver message, repeat it and add it to the buffer
+sbrs r17,0
+rjmp sp_set_zero
+sec
+lds r18,receiver_message + 1
+lds r17,receiver_message
+rol r17
+rol r18
+sts receiver_message + 1,r18
+sts receiver_message,r17
+rjmp ic_end
+sp_set_zero:
+clc
+lds r18,receiver_message + 1
+lds r17,receiver_message
+rol r17
+rol r18
+sts receiver_message + 1,r18
+sts receiver_message,r17
+rjmp ic_end
+
+
+ic_checkdouble:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(2*pulse_duration+pulse_tolerance)
+sbci r17,high(2*pulse_duration+pulse_tolerance)
+brmi inputCapture_cont4
+rjmp ic_error // pulse is way too long --> error
+inputCapture_cont4:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(2*pulse_duration-pulse_tolerance)
+sbci r17,high(2*pulse_duration-pulse_tolerance)
+brpl ic_setlong
+rjmp ic_error // pulse shorter than 2*pulse_duration --> error
+
+
+ic_setlong:
+lds r16,receiver_state
+inc r16
+sts receiver_state,r16
+lds r17,receiver_message // check last bit entered in receiver message, invert it and add it to the buffer
+sbrs r17,0
+rjmp lp_set_one
+clc
+lds r18,receiver_message + 1
+lds r17,receiver_message
+rol r17
+rol r18
+sts receiver_message + 1,r18
+sts receiver_message,r17
+rjmp ic_end
+lp_set_one:
+sec
+lds r18,receiver_message + 1
+lds r17,receiver_message
+rol r17
+rol r18
+sts receiver_message + 1,r18
+sts receiver_message, r17
+
+rjmp ic_end
+
+
+// sixteen bits have been received
+check_rs_3:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(5*pulse_duration+pulse_tolerance)
+sbci r17,high(5*pulse_duration+pulse_tolerance)
+brmi inputCapture_cont5
+rjmp ic_error // pulse is way too long --> error
+inputCapture_cont5:
+in r16,ICR1L
+in r17,ICR1H
+subi r16,low(5*pulse_duration-pulse_tolerance)
+sbci r17,high(5*pulse_duration-pulse_tolerance)
+brpl ic_finalize
+rjmp ic_error // pulse shorter than 5*pulse_duration --> error
+
+ic_finalize:
+ldi r16,0x80
+sts receiver_state,r16
+rjmp ic_very_end
+
+ic_error:
 ldi r16,0x00 // reset the decoder counter to zero
-sts decoder_cntr,r16
+sts receiver_state,r16
+sts receiver_message+1,r16
+sts receiver_message,r16
 
 
 
-inputCapture_end:
+ic_end:
+lds r16,receiver_state
+andi r16,0b0011111
+cpi r16,0x0F
+brne invert_edge_trigger
+rjmp check_very_last_bit
+invert_edge_trigger:
+// invert edge trigger slope
+in r16,TCCR1B
+ldi r17,(1<<ICES1)
+eor r16,r17
+out TCCR1B,r16
+rjmp ic_very_end
+
+check_very_last_bit:
+lds r17,receiver_message
+sbrs r17,0
+rjmp invert_edge_trigger
+
+
+ic_very_end:
+pop r18
+pop r17
 pop r16
 out SREG,r16
 pop r16
@@ -215,6 +379,8 @@ adc_counter:
 .byte 1
 receiver_state:
 .byte 1
+receiver_message:
+.byte 2
 red_val:
 .byte 1
 green_val:

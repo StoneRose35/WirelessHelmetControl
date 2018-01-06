@@ -14,7 +14,7 @@
     <AssemblyName>RevoltingRemoteHelmet</AssemblyName>
     <Name>RevoltingRemoteHelmet</Name>
     <RootNamespace>RevoltingRemoteHelmet</RootNamespace>
-    <EntryFile>$(MSBuildProjectDirectory)\helmet_sender.asm</EntryFile>
+    <EntryFile>$(MSBuildProjectDirectory)\RevoltingRemoteHelmet.asm</EntryFile>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
@@ -96,6 +96,11 @@
     <Compile Include="RevoltingRemoteHelmet.asm">
       <SubType>Code</SubType>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="squarewave.stim">
+      <SubType>Code</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Assembler.targets" />
 </Project>
