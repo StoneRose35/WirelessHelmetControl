@@ -63,7 +63,7 @@
       <ToolNumber>00A20000627A</ToolNumber>
       <ToolName>AVR Dragon</ToolName>
     </com_atmel_avrdbg_tool_avrdragon>
-    <StimuliFile>C:\Users\fuerh_000\Documents\Atmel Studio\6.1\RevoltingRemoteHelmet\RevoltingRemoteHelmet\logger.stim</StimuliFile>
+    <StimuliFile>C:\Users\fuerh_000\Documents\Atmel Studio\6.1\RevoltingRemoteHelmet\RevoltingRemoteHelmet\message.stim</StimuliFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>

@@ -20,11 +20,8 @@ rjmp reset
 .org ICP1addr
 rjmp inputCapture
 
-.org OVF0addr
-rjmp timer0_ovflow
 
-.org OVF1addr
-rjmp timer_stop
+
 
 
 // hauptprogramm startet hier
@@ -74,14 +71,14 @@ out DDRD,r17
 
 // timer/counter 1 acts as clock cycle counter for icp pin
 // overflow on OCR1A
-ldi r16,(1<<WGM10)|(1<<WGM11)
-out TCCR1A,r16
-ldi r16,(1<<TICIE1)|(1<<OCIE1A)
-out TIMSK,r16
-ldi r17,high(pulse_duration+pulse_tolerance)
-ldi r16,low(pulse_duration+pulse_tolerance)
+ldi r17,0xFF
+ldi r16,0xFF
 out OCR1AH,r17
 out OCR1AL,r16
+ldi r16,(1<<WGM10)|(1<<WGM11)
+out TCCR1A,r16
+ldi r16,(1<<TICIE1)//|(1<<OCIE1A)
+out TIMSK,r16
 ldi r16,(1<<ICNC1)|(1<<ICES1)|(1<<CS10)|(1<<WGM13)|(1<<WGM12) // enable noise cancelling, enable trigger on rising edge, start clock
 out TCCR1B,r16
 
@@ -154,10 +151,11 @@ push r18
 in r16,SREG
 push r16
 
-// reset counter
+// reset counter, approximately 20 cpu cycles have passed since the interrupt, so set the counter to 20
 ldi r16,0x00
+ldi r17,0x14
 out TCNT1H,r16
-out TCNT1L,r16
+out TCNT1L,r17
 
 //check the receiver state in order to know which pulse duration to expecte
 lds r16,receiver_state
@@ -230,6 +228,8 @@ ic_clearshort:
 lds r16,receiver_state
 cbr r16,64
 inc r16
+sts receiver_state,r16
+rjmp ic_end
 
 ic_cont_short:
 sts receiver_state,r16
@@ -323,15 +323,21 @@ rjmp ic_very_end
 ic_error:
 ldi r16,0x00 // reset the decoder counter to zero
 sts receiver_state,r16
+//clear the message
 sts receiver_message+1,r16
 sts receiver_message,r16
+//trigger on rising pulse
+in r16,TCCR1B
+ori r16,(1<<ICES1)
+out TCCR1B,r16
+rjmp ic_very_end
 
 
 
 ic_end:
 lds r16,receiver_state
 andi r16,0b0011111
-cpi r16,0x0F
+cpi r16,0x10
 brne invert_edge_trigger
 rjmp check_very_last_bit
 invert_edge_trigger:
@@ -356,22 +362,7 @@ out SREG,r16
 pop r16
 reti
 
-timer0_ovflow:
-reti
 
-
-timer_stop:
-push r16
-in r16,SREG
-push r16
-
-ldi r16,0x00 // reset the decoder counter to zero
-sts decoder_cntr,r16
-
-pop r16
-out SREG,r16
-pop r16
-reti
 
 .dseg
 .org SRAM_START
