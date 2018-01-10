@@ -54,13 +54,18 @@ out DDRB,r16
 
 // setup counter 1 as CTC (clear timer on compare)
 // enable interrupt on output compare 1 A and Overflow on Counter 0
+ldi r16,(1<<COM1A0)
+out TCCR1A,r16
 ldi r16,(1<<OCIE1A)|(1<<TOIE0)
 OUT TIMSK,r16
 ldi r16,(1<<WGM12) // CTC mode
 out TCCR1B,r16
 
-ldi r16,0x02
+ldi r16,0x00
 sts button_state,r16
+
+ldi r16,0x00
+sts sender_state,r16
 
 sei
 
@@ -70,7 +75,7 @@ main:
 in r16,PINC
 andi r16,0x02
 cpi r16,0x02
-brne check_off
+breq check_off
 lds r17,button_state
 cp r16,r17
 breq main
@@ -87,6 +92,8 @@ rjmp main
 
 check_off:
 
+
+
 lds r17,button_state
 cp r16,r17
 breq main
@@ -95,16 +102,43 @@ in r17,TCCR0
 cpi r17,0x00
 brne main
 
+
+
 lds r16,sender_state
 cpi r16,0x00 
 brne main // the sender is already sending, sender_state is greater than zero
+
+
 
 // start debounce_wait
 ldi r16,(1<<CS02)
 out TCCR0,r16
 
+// loop through all colours always toggling on/off
+lds r16,sender_cmd_state
+sbrs r16,0
+rjmp send_off
+lsr r16
+andi r16,0x7
+// led on 
+in r17,PORTC
+ori r17,0x01
+out PORTC,r17
+rjmp start_send
+
+
+send_off:
+ldi r16,0x00
+// led off 
+in r17,PORTC
+andi r17,0xFF-0x01
+out PORTC,r17
+
+start_send:
+lds r17,sender_cmd_state
+inc r17
+sts sender_cmd_state,r17
 ldi r17,0b01010101
-ldi r16,0b00000100 // switch on red on channel 0, the uppermost 5 bits are the channel number and the lower three bytes are the RGB bits
 lsl r16
 rol r17
 sts message_word+1,r17
@@ -113,20 +147,16 @@ ldi r16,0x00
 inc r16
 sts sender_state,r16
 
+
 ldi r17,high(pulse_duration)
 ldi r16,low(pulse_duration)
 out OCR1AH,r17
 out OCR1AL,r16
-in r16,TCCR1A
-andi r17,(1<<COM1A0)
-out TCCR1A,r16
+
 in r16,TCCR1B
 ori r16,(1<<CS10) // start clock, output should be zero, wait for 1 pulse_duration
 out TCCR1B,r16
 
-in r16,PORTC
-ori r16,0x04
-out PORTC,r16
 
 rjmp main
 
@@ -173,9 +203,9 @@ in r16,SREG
 push r16
 
 
-/* simulate output of OCR1 by toggling PC0*/
+/* simulate output of OCR1 by toggling PC2*/
 in r16,PORTC
-ldi r17,0x01
+ldi r17,0x04
 eor r16,r17
 out PORTC,r16
 
@@ -355,3 +385,5 @@ button_state:
 .byte 1
 message_word:
 .byte 2
+sender_cmd_state:
+.byte 1
