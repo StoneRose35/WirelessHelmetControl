@@ -61,7 +61,7 @@ OUT TIMSK,r16
 ldi r16,(1<<WGM12) // CTC mode
 out TCCR1B,r16
 
-ldi r16,0x00
+ldi r16,0x02
 sts button_state,r16
 
 ldi r16,0x00
@@ -165,33 +165,6 @@ rjmp main
 
 
 
-// waits for about a quarter of a second
-longwait:
-push r16
-push r17
-push r18
-push r19
-ldi r18,0x00
-
-start_clock:
-ldi r16,0x00
-out TCNT0,r16
-ldi r16,(1<<CS02)|(0<<CS01)|(1<<CS00)
-out TCCR0,r16
-wait_oflow:
-in r17,TIFR
-sbrs r17,TOV0
-rjmp wait_oflow
-out TIFR,r17
-inc r18
-cpi r18,0x0C
-brne start_clock
-pop r19
-pop r18
-pop r17
-pop r16
-ret
-
 
 
 oscillator_handler:
@@ -202,16 +175,26 @@ push r19
 in r16,SREG
 push r16
 
+; manually resetting the timer, the behaviour explained
+; in the datasheet occurred only in simulation
+; in real live timer overflows have been observed
+ldi r17,0x00
+ldi r16,0x15
+out TCNT1H,r17
+out TCNT1L,r16
 
-/* simulate output of OCR1 by toggling PC2*/
+
+
+//simulate output of OCR1 by toggling PC2
 in r16,PORTC
 ldi r17,0x04
 eor r16,r17
 out PORTC,r16
 
-/*
-first call of the interrupt handler after transmission has started
-*/
+
+
+// first call of the interrupt handler after transmission has started
+
 lds r16,sender_state
 andi r16,0b00111111
 cpi r16,0x01
@@ -235,17 +218,20 @@ ldi r17,high(2*pulse_duration)
 ldi r16,low(2*pulse_duration)
 out OCR1AH,r17
 out OCR1AL,r16
+
+
 rjmp oh_end
 
-/*message transmitted, transmit the end part consisting of 5 times pulse_duration of "1" or 1 pulse duration of zero followed by 4 pulse durations of 1*/
+//message transmitted, transmit the end part consisting of 5 times pulse_duration of "1" or 1 pulse duration of zero followed by 4 pulse durations of 1
 oh_check_sender_state:
 cpi r16,0x10 // 16 bits transmitted, send a "1" that lasts 4 pulse_duration's
 brne oh_check_sender_state2
 lds r16,sender_state
-sbrc r16,7
-rjmp end_with_one // send one clock cycle with 0 level and 4 clock cycles with 1 level
 sbrc r16,6
 rjmp onepulse2 // finish second half "same-bit" pulse
+sbrc r16,7
+rjmp end_with_one // send one clock cycle with 0 level and 4 clock cycles with 1 level
+
 inc r16
 sts sender_state,r16
 
@@ -256,6 +242,8 @@ out OCR1AL,r16
 rjmp oh_end
 
 end_with_one:
+
+
 inc r16
 sts sender_state,r16
 
@@ -266,9 +254,9 @@ out OCR1AL,r16
 rjmp oh_end
 
 
-/*
-at the very end: switch everything off when 5 pulse durations of one were transmitted or send out another pulse of 4 pulse durations
-*/
+
+//at the very end: switch everything off when 5 pulse durations of one were transmitted or send out another pulse of 4 pulse durations
+
 oh_check_sender_state2:
 cpi r16,0x11 // seventeenth bit set, long pulse ends
 brne oh_check_sender_state3
@@ -281,6 +269,7 @@ andi r17,0xFF-0x07
 out TCCR1B,r17
 ldi r16,0x00
 sts sender_state,r16
+
 
 // reset counter
 out TCNT1H,r16
@@ -298,9 +287,9 @@ out OCR1AL,r16
 
 rjmp oh_end
 
-/* 
-in the middle of transmission, first bit already transmitted
-*/
+ 
+//in the middle of transmission, first bit already transmitted
+
 oh_check_sender_state3:
 lds r16,sender_state
 sbrc r16,6 // bit 6 indicates that only one pulse of length pulse_duration has been sent, automatically send the second one
@@ -353,6 +342,7 @@ ldi r17,high(pulse_duration)
 ldi r16,low(pulse_duration)
 out OCR1AH,r17
 out OCR1AL,r16
+
 
 oh_end:
 pop r16

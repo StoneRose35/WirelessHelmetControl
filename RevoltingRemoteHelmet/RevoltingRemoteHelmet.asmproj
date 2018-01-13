@@ -14,7 +14,7 @@
     <AssemblyName>RevoltingRemoteHelmet</AssemblyName>
     <Name>RevoltingRemoteHelmet</Name>
     <RootNamespace>RevoltingRemoteHelmet</RootNamespace>
-    <EntryFile>$(MSBuildProjectDirectory)\RevoltingRemoteHelmet.asm</EntryFile>
+    <EntryFile>$(MSBuildProjectDirectory)\helmet_sender.asm</EntryFile>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
@@ -37,13 +37,14 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
+    <avrtool>com.atmel.avrdbg.tool.avrdragon</avrtool>
     <com_atmel_avrdbg_tool_simulator>
       <ToolOptions>
         <InterfaceProperties>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
         </InterfaceProperties>
-        <InterfaceName>ISP</InterfaceName>
+        <InterfaceName>
+        </InterfaceName>
       </ToolOptions>
       <ToolType>com.atmel.avrdbg.tool.simulator</ToolType>
       <ToolNumber>
@@ -55,7 +56,7 @@
       <ToolOptions>
         <InterfaceProperties>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
-          <IspClock>0</IspClock>
+          <IspClock>125000</IspClock>
         </InterfaceProperties>
         <InterfaceName>ISP</InterfaceName>
       </ToolOptions>
@@ -63,7 +64,7 @@
       <ToolNumber>00A20000627A</ToolNumber>
       <ToolName>AVR Dragon</ToolName>
     </com_atmel_avrdbg_tool_avrdragon>
-    <StimuliFile>C:\Users\fuerh_000\Documents\Atmel Studio\6.1\RevoltingRemoteHelmet\RevoltingRemoteHelmet\message.stim</StimuliFile>
+    <StimuliFile>C:\Users\fuerh_000\Documents\Atmel Studio\6.1\RevoltingRemoteHelmet\RevoltingRemoteHelmet\logger.stim</StimuliFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>

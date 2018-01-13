@@ -5,5 +5,5 @@
  *   Author: fuerh_000
  */ 
 
-  .equ pulse_duration = 0x0140
+ .equ pulse_duration = 320
  .equ pulse_tolerance = 0x64

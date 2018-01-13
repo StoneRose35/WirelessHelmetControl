@@ -219,6 +219,7 @@ rjmp ic_error // pulse was short than 1 pulse_duration --> certainly an error
 
 
 ic_setshort:
+
 // we have a short pulse
 lds r16,receiver_state
 sbr r16,64
@@ -273,6 +274,12 @@ rjmp ic_error // pulse shorter than 2*pulse_duration --> error
 
 
 ic_setlong:
+
+ldi r16,0x02
+in r17,PORTB
+eor r17,r16
+out PORTB,r17
+
 lds r16,receiver_state
 inc r16
 sts receiver_state,r16
@@ -330,6 +337,7 @@ sts receiver_message,r16
 in r16,TCCR1B
 ori r16,(1<<ICES1)
 out TCCR1B,r16
+
 rjmp ic_very_end
 
 
