@@ -48,6 +48,11 @@ out DDRC,r16
 ldi r16,(1<<PORTC1)
 out PORTC,r16
 
+
+// pd0-2 as input with pull up enabled
+ldi r16,0x07
+out PORTD,r16
+
 //portb konfigurieren: portb1 ist ausgang
 ldi r16,(1<<DDB1)
 out DDRB,r16
@@ -114,38 +119,16 @@ brne main // the sender is already sending, sender_state is greater than zero
 ldi r16,(1<<CS02)
 out TCCR0,r16
 
-// loop through all colours always toggling on/off
-lds r16,sender_cmd_state
-sbrs r16,0
-rjmp send_off
-lsr r16
-andi r16,0x7
-// led on 
-in r17,PORTC
-ori r17,0x01
-out PORTC,r17
-rjmp start_send
+// send the command present at pind0-2
+in r16,PIND
+andi r16,0x07
 
 
-send_off:
-ldi r16,0x00
-// led off 
-in r17,PORTC
-andi r17,0xFF-0x01
-out PORTC,r17
-
-start_send:
-lds r17,sender_cmd_state
-inc r17
-sts sender_cmd_state,r17
 ldi r17,0b01010101
 lsl r16
 rol r17
 sts message_word+1,r17
 sts message_word,r16
-ldi r16,0x00
-inc r16
-sts sender_state,r16
 
 
 ldi r17,high(pulse_duration)
@@ -224,14 +207,16 @@ rjmp oh_end
 
 //message transmitted, transmit the end part consisting of 5 times pulse_duration of "1" or 1 pulse duration of zero followed by 4 pulse durations of 1
 oh_check_sender_state:
-cpi r16,0x10 // 16 bits transmitted, send a "1" that lasts 4 pulse_duration's
+cpi r16,0x0F // 16 bits transmitted, send a "1" that lasts 4 pulse_duration's
 brne oh_check_sender_state2
 lds r16,sender_state
 sbrc r16,6
 rjmp onepulse2 // finish second half "same-bit" pulse
-sbrc r16,7
+in r16,PORTC
+sbrs r16,2
 rjmp end_with_one // send one clock cycle with 0 level and 4 clock cycles with 1 level
 
+lds r16,sender_state
 inc r16
 sts sender_state,r16
 
@@ -244,6 +229,7 @@ rjmp oh_end
 end_with_one:
 
 
+lds r16,sender_state
 inc r16
 sts sender_state,r16
 
@@ -258,7 +244,7 @@ rjmp oh_end
 //at the very end: switch everything off when 5 pulse durations of one were transmitted or send out another pulse of 4 pulse durations
 
 oh_check_sender_state2:
-cpi r16,0x11 // seventeenth bit set, long pulse ends
+cpi r16,0x10 // six bit set, long pulse ends
 brne oh_check_sender_state3
 lds r16,sender_state
 sbrc r16,7

@@ -100,9 +100,7 @@ brne main_end
 
 andi r16,0x07
 lsl r16
-in r17,PORTB
-or r17,r16
-out PORTB,r17
+out PORTB,r16
 
 main_end:
 sts receiver_state,r18
@@ -202,7 +200,7 @@ rjmp ic_error // pulse was short than 1 pulse_duration --> certainly an error
 
 
 check_shortpulse:
-// we are receiving byte so check for 1*pulse_duration and 2*pulse_duration pulses
+// we are receiving a byte so check for 1*pulse_duration and 2*pulse_duration pulses
 in r16,ICR1L
 in r17,ICR1H
 subi r16,low(pulse_duration+pulse_tolerance)
@@ -254,6 +252,8 @@ rol r17
 rol r18
 sts receiver_message + 1,r18
 sts receiver_message,r17
+
+
 rjmp ic_end
 
 
@@ -275,10 +275,6 @@ rjmp ic_error // pulse shorter than 2*pulse_duration --> error
 
 ic_setlong:
 
-ldi r16,0x02
-in r17,PORTB
-eor r17,r16
-out PORTB,r17
 
 lds r16,receiver_state
 inc r16
@@ -303,11 +299,15 @@ rol r18
 sts receiver_message + 1,r18
 sts receiver_message, r17
 
+
 rjmp ic_end
 
 
 // sixteen bits have been received
 check_rs_3:
+
+
+
 in r16,ICR1L
 in r17,ICR1H
 subi r16,low(5*pulse_duration+pulse_tolerance)
@@ -320,6 +320,7 @@ in r17,ICR1H
 subi r16,low(5*pulse_duration-pulse_tolerance)
 sbci r17,high(5*pulse_duration-pulse_tolerance)
 brpl ic_finalize
+
 rjmp ic_error // pulse shorter than 5*pulse_duration --> error
 
 ic_finalize:
@@ -338,6 +339,8 @@ in r16,TCCR1B
 ori r16,(1<<ICES1)
 out TCCR1B,r16
 
+
+
 rjmp ic_very_end
 
 
@@ -355,6 +358,8 @@ ldi r17,(1<<ICES1)
 eor r16,r17
 out TCCR1B,r16
 rjmp ic_very_end
+
+
 
 check_very_last_bit:
 lds r17,receiver_message
