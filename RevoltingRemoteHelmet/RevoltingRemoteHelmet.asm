@@ -114,31 +114,6 @@ rjmp main
 
 
 
-// waits for about a quarter of a second
-longwait:
-push r16
-push r17
-push r18
-push r19
-ldi r18,0x00
-
-start_clock:
-ldi r16,0x00
-out TCNT0,r16
-ldi r16,(0<<CS02)|(1<<CS01)|(0<<CS00)
-out TCCR0,r16
-wait_oflow:
-in r17,TIFR
-sbrs r17,TOV0
-rjmp wait_oflow
-out TIFR,r17
-//inc r18
-//brne start_clock
-pop r19
-pop r18
-pop r17
-pop r16
-ret
 
 
 
