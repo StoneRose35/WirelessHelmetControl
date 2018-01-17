@@ -60,8 +60,8 @@ sts decoder_cntr,r16
 
 
 
-// PB1-PB3 as output
-ldi r16,(1<<DDB1)|(1<<DDB2)|(1<<DDB3)|(0<<DDB0)
+// PB1-PB4 as output
+ldi r16,(1<<DDB1)|(1<<DDB2)|(1<<DDB3)|(0<<DDB0)|(1<<DDB4)
 out DDRB,r16
 ldi r16,0x00
 out PORTB,r16
@@ -154,6 +154,8 @@ ldi r16,0x00
 ldi r17,0x14
 out TCNT1H,r16
 out TCNT1L,r17
+
+
 
 //check the receiver state in order to know which pulse duration to expecte
 lds r16,receiver_state
@@ -326,6 +328,15 @@ rjmp ic_error // pulse shorter than 5*pulse_duration --> error
 ic_finalize:
 ldi r16,0x80
 sts receiver_state,r16
+//trigger on rising pulse
+in r16,TCCR1B
+ori r16,(1<<ICES1)
+out TCCR1B,r16
+// switch off portb4 once a message has been transmitted successfully
+in r16,PORTB
+andi r16,0xFF-0x10
+out PORTB,r16
+
 rjmp ic_very_end
 
 ic_error:
@@ -340,6 +351,10 @@ ori r16,(1<<ICES1)
 out TCCR1B,r16
 
 
+// switch on portb4 on error
+in r16,PORTB
+ori r16,0x10
+out PORTB,r16
 
 rjmp ic_very_end
 
