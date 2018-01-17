@@ -71,24 +71,59 @@ sts button_state,r16
 
 ldi r16,0x00
 sts sender_state,r16
+sts sender_cmd_state,r16
 
 sei
 
 
 main:
 
-// send "white" (all leds on), four times
 ldi r16,0x07
-ldi r17,0x03
-rcall send_one_command
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x07
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x07
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x07
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
 // wait
 rcall longwait
 
 
-// send "black" (all leds off), four times
 ldi r16,0x00
-ldi r17,0x03
-rcall send_one_command
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x00
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x00
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
+// wait
+rcall longwait
+
+ldi r16,0x00
+ldi r17,0x06
+rcall send_one_command //send_repeated_command
 // wait
 rcall longwait
 
@@ -112,7 +147,8 @@ sts sender_cmd_state,r17
 send_repeated_cmd_loop:
 rcall send_one_command
 send_repeated_cmd_wait1:
-lds r17,sender_state
+in r17,TCCR1B
+andi r17,0x07
 cpi r17,0x00
 brne send_repeated_cmd_wait1
 
@@ -136,6 +172,21 @@ inc r17
 nop
 nop
 nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
 brne send_repeated_cmd_wait2
 rjmp send_repeated_cmd_loop
 
@@ -150,6 +201,7 @@ ret
 
 
 send_one_command:
+push r16
 push r17
 ; sends the command, the command byte is in r16
 ldi r17,0b01010101
@@ -157,8 +209,7 @@ lsl r16
 rol r17
 sts message_word+1,r17
 sts message_word,r16
-ldi r17,0x01
-sts sender_state,r17
+
 
 ldi r17,high(pulse_duration)
 ldi r16,low(pulse_duration)
@@ -171,6 +222,7 @@ out TCCR1B,r16
 
 
 pop r17
+pop r16
 ret
 
 
@@ -422,6 +474,6 @@ button_state:
 .byte 1
 message_word: // the message word itself, the first byte always needs to be 0b01010101 (synchronzation byte)
 .byte 2
-sender_cmd_state: //lower 3 bits: number of times a command should be sent repeatedly, an reserved bit, next 3 byte the number of times a command is sent, uppermost
+sender_cmd_state: //lower 3 bits: number of times a command should be sent repeatedly, an reserved bit, next 3 bits the number of times a command is sent, uppermost
 //bit 1 if the sender is sending, 0 otherwise 
 .byte 1
