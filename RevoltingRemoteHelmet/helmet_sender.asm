@@ -61,7 +61,7 @@ out DDRB,r16
 // enable interrupt on output compare 1 A and Overflow on Counter 0
 ldi r16,(1<<COM1A0)
 out TCCR1A,r16
-ldi r16,(1<<OCIE1A)
+ldi r16,(1<<OCIE1A)|(1<<TOIE0)
 OUT TIMSK,r16
 ldi r16,(1<<WGM12) // CTC mode
 out TCCR1B,r16
@@ -78,55 +78,61 @@ sei
 
 main:
 
-ldi r16,0x07
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
-
-ldi r16,0x07
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
-
-ldi r16,0x07
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
-
-ldi r16,0x07
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
 
 
-ldi r16,0x00
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
+in r16,PINC
+andi r16,0x02
+cpi r16,0x02
+breq check_off
+lds r17,button_state
+cp r16,r17
+breq main
+sts button_state,r16
+in r17,TCCR0
+cpi r17,0x00
+brne main
 
-ldi r16,0x00
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
 
-ldi r16,0x00
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
+in r16,PORTC
+ldi r17,0x01
+eor r16,r17
+out PORTC,r16
+// start debounce_wait
+ldi r16,(1<<CS02)
+out TCCR0,r16
 
-ldi r16,0x00
-ldi r17,0x06
-rcall send_one_command //send_repeated_command
-// wait
-rcall longwait
+rjmp main
 
+check_off:
+
+
+
+lds r17,button_state
+cp r16,r17
+breq main
+sts button_state,r16
+in r17,TCCR0
+cpi r17,0x00
+brne main
+
+
+
+lds r16,sender_state
+cpi r16,0x00 
+brne main // the sender is already sending, sender_state is greater than zero
+
+
+
+// start debounce_wait
+ldi r16,(1<<CS02)
+out TCCR0,r16
+
+// send the command present at pind0-2
+in r16,PIND
+andi r16,0x07
+ldi r17,0x02
+
+rcall send_repeated_command
 
 
 rjmp main
