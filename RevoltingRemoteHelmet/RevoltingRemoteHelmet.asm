@@ -89,7 +89,7 @@ main:
 
 lds r18,receiver_state
 sbrs r18,7
-rjmp main
+rjmp main_checkproc
 
 // message is ready, decode it
 cbr r18,128
@@ -107,36 +107,70 @@ sts receiver_state,r18
 
 rjmp main
 
+
+main_checkproc:
+
+sbrs r18,5
+rjmp main
+rcall inputCapture_process
+
+rjmp main
+
 //rcall longwait
 
 
- 
+ // interrupt handling routine
+ inputCapture:
+ push r16
+ push r17
+ in r16,SREG
+ push r16
+
+ lds r16,receiver_state // 2
+ sbrs r16,5 // 2
+ rjmp ic_setbit // 2
+ pop r16
+ out SREG,r16
+ pop r17
+ pop r16
+ sei
+ rjmp inputCapture_process
+
+
+ic_setbit:
+sbr r16,32 // 1
+sts receiver_state,r16
+  //reset counter
+ldi r16,0x00
+ldi r17,0x1B
+out TCNT1H,r16
+out TCNT1L,r17
+
+
+ ic_reti:
+ pop r16
+ out SREG,r16
+ pop r17
+ pop r16
+ reti
 
 
 
 
 
-
-inputCapture:
+inputCapture_process:
 push r16
 push r17
 push r18
 in r16,SREG
 push r16
 
-// reset counter, approximately 20 cpu cycles have passed since the interrupt, so set the counter to 20
-ldi r16,0x00
-ldi r17,0x14
-out TCNT1H,r16
-out TCNT1L,r17
-
-
 
 //check the receiver state in order to know which pulse duration to expecte
 lds r16,receiver_state
 sbrc r16,7 // ignore any kind of interrupts as long as the message hasn't been consumed
 rjmp ic_end
-andi r16,0b0011111
+andi r16,0b00011111
 cpi r16,0x00 
 brne check_rs_2
 // the very first pulse has been received
@@ -337,7 +371,7 @@ rjmp ic_very_end
 
 ic_end:
 lds r16,receiver_state
-andi r16,0b0011111
+andi r16,0b00011111
 cpi r16,0x10
 brne invert_edge_trigger
 rjmp check_very_last_bit
@@ -358,12 +392,16 @@ rjmp invert_edge_trigger
 
 
 ic_very_end:
+lds r16,receiver_state
+cbr r16,32
+sts receiver_state,r16
+
+pop r16
+out SREG,r16
 pop r18
 pop r17
 pop r16
-out SREG,r16
-pop r16
-reti
+ret
 
 
 
@@ -371,7 +409,20 @@ reti
 .org SRAM_START
 adc_counter:
 .byte 1
-receiver_state:
+
+/*
+RECEIVER_STATE
+bit 7: set to one when a message has been completely received, should be set back to zeros once 
+a message has been processed since no more messages can be received unless the this flag is set 
+back to zero
+bit 6: this bit is set once the first "short pulse" indicating a repetition of a bit value
+has been received, it is clear on the reception of a following short pulse
+bit 5: this bit is set when an interrupt occurred and is cleared when the event has been completed
+processed by "inputCapture_process" when two interrupt follow whith processing time this is treated as an error
+bit 4-0: holds the number of bits received, is increased on receptions of a message
+*/
+
+receiver_state: 
 .byte 1
 receiver_message:
 .byte 2

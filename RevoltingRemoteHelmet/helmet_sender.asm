@@ -240,7 +240,7 @@ push r16
 
 ; manually resetting the timer, the behaviour explained
 ; in the datasheet occurred only in simulation
-; in real live timer overflows have been observed
+; in real life timer overflows have been observed
 ldi r17,0x00
 ldi r16,0x15
 out TCNT1H,r17
