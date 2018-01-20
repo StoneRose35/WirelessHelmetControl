@@ -5,7 +5,7 @@
  *   Author: fuerh_000
  */ 
 
- .equ pulse_duration = 320
- .equ pulse_tolerance = 100
+ .equ pulse_duration = 750
+ .equ pulse_tolerance = 150
 
  
